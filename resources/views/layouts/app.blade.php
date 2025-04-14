@@ -14,23 +14,32 @@
         <!-- Scripts -->
         @vite(['resources/css/app.css', 'resources/js/app.js'])
     </head>
-    <body class="font-sans antialiased">
-        <div class="min-h-screen bg-gray-100">
+    <body class="font-sans antialiased bg-[#F7EADF]">
+        <div class="min-h-screen flex flex-col">
             @include('layouts.navigation')
 
             <!-- Page Heading -->
             @isset($header)
-                <header class="bg-white shadow">
-                    <div class="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
-                        {{ $header }}
+                <header class="bg-white shadow-md">
+                    <div class="max-w-7xl mx-auto py-4 px-4 sm:px-6 lg:px-8">
+                        <h1 class="text-xl font-semibold text-[#735C49]">{{ $header }}</h1>
                     </div>
                 </header>
             @endisset
 
             <!-- Page Content -->
-            <main>
-                {{ $slot }}
+            <main class="flex-grow">
+                <div class="py-6 px-4 sm:px-6 lg:px-8">
+                    {{ $slot }}
+                </div>
             </main>
+            
+            <!-- Footer -->
+            <footer class="bg-white py-4 border-t border-[#735C49]/20">
+                <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center text-sm text-[#735C49]">
+                    &copy; {{ date('Y') }} Hekkensluiter Beheer Systeem
+                </div>
+            </footer>
         </div>
     </body>
 </html>

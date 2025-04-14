@@ -17,18 +17,19 @@ class CreateGedetineerdenTable extends Migration
             $table->id();
             $table->string('naam_gedetineerd');
             $table->date('geboortedatum_gedetineerd');
-            $table->string('id_nummer');
+            $table->string('id_nummer')->unique(); // Uniek id nummer
             $table->string('adres_gedetineerd');
-            $table->text('bezittingen');
+            $table->text('bezittingen')->nullable(); // Maak bezittingen nullable indien nodig
             $table->date('datum_opsluiting');
             $table->date('datum_vrijlating');
-            $table->datetime('datum_tijd_bezoek');
-            $table->integer('aantal_bezoeken');
             $table->string('locatie_vleugel_cel');
-            $table->text('historie_locatie');
+            $table->text('historie_locatie')->nullable(); // Maak historie_locatie nullable indien nodig
             $table->string('reden_gedetineerd');
             $table->text('opmerkingen')->nullable();
             $table->timestamps();
+
+            // Voeg een index toe voor snelle zoekopdrachten
+            $table->index(['locatie_vleugel_cel', 'id_nummer']);
         });
     }
 

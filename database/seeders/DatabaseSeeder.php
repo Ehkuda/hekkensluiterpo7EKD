@@ -3,8 +3,8 @@
 namespace Database\Seeders;
 
 use App\Models\User;
-// use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Facades\Hash;
 
 class DatabaseSeeder extends Seeder
 {
@@ -13,11 +13,21 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
-        // User::factory(10)->create();
+        // Maak een Directeur aan
+        $user = User::create([
+            'name' => 'Directeur',
+            'email' => 'directeur@example.com',
+            'password' => Hash::make('wachtwoord123'), // Gebruik bcrypt
+        ]);
 
-        User::factory()->create([
-            'name' => 'Test User',
-            'email' => 'test@example.com',
+        // Wijs de 'directeur' rol toe aan de gebruiker
+        $user->assignRole('directeur');
+
+        // Maak een Admin aan, die ook dezelfde rechten heeft als de Directeur
+        $admin = User::create([
+            'name' => 'Admin',
+            'email' => 'admin@example.com',
+            'password' => Hash::make('wachtwoord123'), // Gebruik bcrypt
         ]);
     }
 }
