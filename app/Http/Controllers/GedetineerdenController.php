@@ -99,6 +99,19 @@ class GedetineerdenController extends Controller
         return view('gedetineerden.index', compact('gedetineerden', 'zoekterm'));
     }
 
+    /**
+     * Display the specified resource.
+     */
+    public function show($id)
+    {
+        $gedetineerde = Gedetineerde::with('cel')->findOrFail($id);
+        
+        // Optionally get the cell history for this detainee
+        $celGeschiedenis = $gedetineerde->celGeschiedenis()->with('cel')->get();
+        
+        return view('gedetineerden.show', compact('gedetineerde', 'celGeschiedenis'));
+    }
+
     // Toevoegen van een nieuwe gedetineerde
     public function create()
     {
@@ -148,100 +161,6 @@ class GedetineerdenController extends Controller
 
         return redirect()->route('gedetineerden.index')->with('success', 'Gedetineerde toegevoegd!');
     }
-
-    public function geschiedenis(Gedetineerde $gedetineerde)
-    {
-        // Haal de celgeschiedenis op voor deze gedetineerde
-        $geschiedenis = $gedetineerde->celGeschiedenis()->with('cel')->get();
-        
-        // Haal de cel van de gedetineerde, indien aanwezig
-        $cel = $gedetineerde->cel;
-        
-        return view('cellen.geschiedenis', compact('gedetineerde', 'geschiedenis', 'cel'));
-    }
-    
-
-    // Index van alle cellen
-    public function cellenIndex(Request $request)
-    {
-        $zoekterm = $request->input('zoekterm');
-
-        $query = Cel::with('gedetineerde');
-
-        if ($zoekterm) {
-            $query->where(function ($q) use ($zoekterm) {
-                $q->where('naam', 'like', '%' . $zoekterm . '%')
-                    ->orWhereHas('gedetineerde', function ($q) use ($zoekterm) {
-                        $q->where('naam_gedetineerd', 'like', '%' . $zoekterm . '%');
-                    });
-            });
-        }
-
-        $cellen = $query->paginate(15);
-
-        // Controleer of cellen null zijn, zo niet stuur een lege collectie
-        $cellen = $cellen ?? collect(); // Zorg ervoor dat het geen null is
-
-        return view('cellen.index', compact('cellen', 'zoekterm'));
-    }
-
-    // Formulier om een gedetineerde te verplaatsen
-    public function showVerplaatsForm($celId)
-    {
-        $cel = Cel::findOrFail($celId);
-        $beschikbareCellen = Cel::whereNull('gedetineerde_id')->get();
-        return view('cellen.verplaats', compact('cel', 'beschikbareCellen'));
-    }
-
-   // Verplaats een gedetineerde naar een andere cel
-public function verplaatsGedetineerde(Request $request, $celId)
-{
-    $validated = $request->validate([
-        'cel_id' => 'required|exists:cels,id',
-    ]);
-
-    $cel = Cel::findOrFail($celId);
-    $gedetineerde = $cel->gedetineerde;
-
-    if ($gedetineerde) {
-        $nieuweCel = Cel::findOrFail($validated['cel_id']);
-
-// Registreer de geschiedenis van de oude cel
-if ($cel->gedetineerde_id) {
-    $cel->celGeschiedenis()
-    ->where('gedetineerde_id', $gedetineerde->id)
-    ->whereNull('tot_datum')
-    ->update(['tot_datum' => now()]);  // Slaat timestamp op met datum én tijd
-}
-
-        // Oude cel leegmaken
-        $cel->gedetineerde_id = null;
-        $cel->save();
-
-        // Registreer de geschiedenis van de nieuwe cel
-        if ($nieuweCel) {
-            $nieuweCel->gedetineerde_id = $gedetineerde->id;
-            $nieuweCel->save();
-
-            // Voeg de nieuwe celgeschiedenis toe
-            $nieuweCel->celGeschiedenis()->create([
-                'gedetineerde_id' => $gedetineerde->id,
-                'cel_id' => $nieuweCel->id,
-                'van_datum' => now(), // De huidige datum als 'van_datum'
-                'tot_datum' => null,  // Tot nu, omdat de gedetineerde nog niet verhuisd is
-            ]);
-        }
-
-        // Update ook in de gedetineerde zelf
-        $gedetineerde->locatie_vleugel_cel = $nieuweCel->id;
-        $gedetineerde->save();
-
-        return redirect()->route('cellen.index')->with('success', 'Gedetineerde succesvol verplaatst!');
-    }
-
-    return redirect()->route('cellen.index')->with('error', 'Er is geen gedetineerde om te verplaatsen.');
-}
-
 
     // Bewerken van een gedetineerde
     public function edit($id)
@@ -310,12 +229,131 @@ if ($cel->gedetineerde_id) {
         return redirect()->route('gedetineerden.index')->with('success', 'Gegevens succesvol bijgewerkt!');
     }
 
-    public function celGeschiedenis($celId)
-{
-    $cel = Cel::findOrFail($celId);
-    $geschiedenis = $cel->celGeschiedenis()->with('gedetineerde')->get();
-    
-    return view('cellen.geschiedenis', compact('cel', 'geschiedenis'));
-}
+    /**
+     * Remove the specified resource from storage.
+     */
+    public function destroy($id)
+    {
+        $gedetineerde = Gedetineerde::findOrFail($id);
+        
+        // First, free up the cell if the detainee is in one
+        if ($gedetineerde->locatie_vleugel_cel) {
+            $cel = Cel::find($gedetineerde->locatie_vleugel_cel);
+            if ($cel) {
+                $cel->gedetineerde_id = null;
+                $cel->save();
+            }
+        }
+        
+        // Close any open cell history records
+        $gedetineerde->celGeschiedenis()
+            ->whereNull('tot_datum')
+            ->update(['tot_datum' => now()]);
+        
+        // Delete the detainee
+        $gedetineerde->delete();
+        
+        return redirect()->route('gedetineerden.index')
+            ->with('success', 'Gedetineerde succesvol verwijderd!');
+    }
 
+    public function geschiedenis(Gedetineerde $gedetineerde)
+    {
+        // Haal de celgeschiedenis op voor deze gedetineerde
+        $geschiedenis = $gedetineerde->celGeschiedenis()->with('cel')->get();
+        
+        // Haal de cel van de gedetineerde, indien aanwezig
+        $cel = $gedetineerde->cel;
+        
+        return view('cellen.geschiedenis', compact('gedetineerde', 'geschiedenis', 'cel'));
+    }
+    
+    // Index van alle cellen
+    public function cellenIndex(Request $request)
+    {
+        $zoekterm = $request->input('zoekterm');
+
+        $query = Cel::with('gedetineerde');
+
+        if ($zoekterm) {
+            $query->where(function ($q) use ($zoekterm) {
+                $q->where('naam', 'like', '%' . $zoekterm . '%')
+                    ->orWhereHas('gedetineerde', function ($q) use ($zoekterm) {
+                        $q->where('naam_gedetineerd', 'like', '%' . $zoekterm . '%');
+                    });
+            });
+        }
+
+        $cellen = $query->paginate(15);
+
+        // Controleer of cellen null zijn, zo niet stuur een lege collectie
+        $cellen = $cellen ?? collect(); // Zorg ervoor dat het geen null is
+
+        return view('cellen.index', compact('cellen', 'zoekterm'));
+    }
+
+    // Formulier om een gedetineerde te verplaatsen
+    public function showVerplaatsForm($celId)
+    {
+        $cel = Cel::findOrFail($celId);
+        $beschikbareCellen = Cel::whereNull('gedetineerde_id')->get();
+        return view('cellen.verplaats', compact('cel', 'beschikbareCellen'));
+    }
+
+    // Verplaats een gedetineerde naar een andere cel
+    public function verplaatsGedetineerde(Request $request, $celId)
+    {
+        $validated = $request->validate([
+            'cel_id' => 'required|exists:cels,id',
+        ]);
+
+        $cel = Cel::findOrFail($celId);
+        $gedetineerde = $cel->gedetineerde;
+
+        if ($gedetineerde) {
+            $nieuweCel = Cel::findOrFail($validated['cel_id']);
+
+            // Registreer de geschiedenis van de oude cel
+            if ($cel->gedetineerde_id) {
+                $cel->celGeschiedenis()
+                ->where('gedetineerde_id', $gedetineerde->id)
+                ->whereNull('tot_datum')
+                ->update(['tot_datum' => now()]);  // Slaat timestamp op met datum én tijd
+            }
+
+            // Oude cel leegmaken
+            $cel->gedetineerde_id = null;
+            $cel->save();
+
+            // Registreer de geschiedenis van de nieuwe cel
+            if ($nieuweCel) {
+                $nieuweCel->gedetineerde_id = $gedetineerde->id;
+                $nieuweCel->save();
+
+                // Voeg de nieuwe celgeschiedenis toe
+                $nieuweCel->celGeschiedenis()->create([
+                    'gedetineerde_id' => $gedetineerde->id,
+                    'cel_id' => $nieuweCel->id,
+                    'van_datum' => now(), // De huidige datum als 'van_datum'
+                    'tot_datum' => null,  // Tot nu, omdat de gedetineerde nog niet verhuisd is
+                ]);
+            }
+
+            // Update ook in de gedetineerde zelf
+            $gedetineerde->locatie_vleugel_cel = $nieuweCel->id;
+            $gedetineerde->save();
+
+            return redirect()->route('cellen.index')->with('success', 'Gedetineerde succesvol verplaatst!');
+        }
+
+        return redirect()->route('cellen.index')->with('error', 'Er is geen gedetineerde om te verplaatsen.');
+    }
+
+    public function celGeschiedenis($celId)
+    {
+        $cel = Cel::findOrFail($celId);
+        $geschiedenis = $cel->celGeschiedenis()->with('gedetineerde')->get();
+        
+        return view('cellen.geschiedenis', compact('cel', 'geschiedenis'));
+    }
 }

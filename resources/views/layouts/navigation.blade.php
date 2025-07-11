@@ -24,6 +24,11 @@
                     <x-nav-link :href="route('cellen.index')" :active="request()->routeIs('cellen.*')" class="hover:bg-[#F7EADF] text-[#735C49] px-3 py-2 rounded-md transition duration-150 ease-in-out">
                         {{ __('Cellen') }}
                     </x-nav-link>
+
+                    <x-nav-link :href="route('admin.dashboard')" :active="request()->routeIs('admin.dashboard')" class="hover:bg-[#F7EADF] text-[#735C49] px-3 py-2 rounded-md transition duration-150 ease-in-out">
+                        {{ __('Beheer') }}
+                    </x-nav-link>
+
                 </div>
             </div>
 
