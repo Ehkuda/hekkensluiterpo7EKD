@@ -142,9 +142,6 @@
                                     <p class="text-[#735C49] font-medium">Beheer Rollen</p>
                                 </div>
                             </a>
-
-
-                            </a>
                             <a href="{{ route('admin.users.index') }}" class="flex items-center p-4 bg-[#F7EADF]/40 rounded-lg hover:bg-[#F7EADF] transition-colors duration-300">
                                 <div class="flex-shrink-0 bg-[#735C49] p-2 rounded-full">
                                     <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -153,6 +150,16 @@
                                 </div>
                                 <div class="ml-3">
                                     <p class="text-[#735C49] font-medium">Overzicht Gebruikers</p>
+                                </div>
+                            </a>
+                            <a href="{{ route('gedetineerden.index') }}" class="flex items-center p-4 bg-[#F7EADF]/40 rounded-lg hover:bg-[#F7EADF] transition-colors duration-300">
+                                <div class="flex-shrink-0 bg-[#735C49] p-2 rounded-full">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                                    </svg>
+                                </div>
+                                <div class="ml-3">
+                                    <p class="text-[#735C49] font-medium">Overzicht Gedetineerden</p>
                                 </div>
                             </a>
                         </div>

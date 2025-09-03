@@ -1,120 +1,63 @@
-@extends('layouts.app')
+<x-app-layout>
+    <div class="py-8">
+        <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
+            <div class="bg-white overflow-hidden shadow-lg sm:rounded-xl">
+                <div class="p-6 text-gray-900">
+                    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-8">
+                        <h1 class="text-3xl font-semibold text-[#735C49] mb-4 sm:mb-0">Nieuwe Rol Aanmaken</h1>
+                        <a href="{{ route('admin.roles.index') }}" 
+                           class="inline-flex items-center px-4 py-2 bg-gray-500 text-white rounded-md hover:bg-gray-400 transition-colors duration-300 text-sm font-medium">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+                            </svg>
+                            Terug
+                        </a>
+                    </div>
 
-@section('content')
-<div class="container-fluid">
-    <div class="row">
-        <div class="col-md-3 col-lg-2 sidebar">
-            @include('admin.partials.sidebar')
-        </div>
-
-        <div class="col-md-9 col-lg-10 main-content">
-            <div class="d-flex justify-content-between align-items-center mb-4">
-                <h1 class="h3">Nieuwe Rol Aanmaken</h1>
-                <a href="{{ route('admin.roles.index') }}" class="btn btn-secondary">
-                    <i class="fas fa-arrow-left"></i> Terug
-                </a>
-            </div>
-
-            <div class="card shadow">
-                <div class="card-body">
                     <form method="POST" action="{{ route('admin.roles.store') }}">
                         @csrf
-
-                        <div class="row">
-                            <div class="col-md-6">
-                                <div class="form-group">
-                                    <label for="name">Rol Naam <span class="text-danger">*</span></label>
-                                    <input type="text" 
-                                           class="form-control @error('name') is-invalid @enderror" 
-                                           id="name" 
-                                           name="name" 
-                                           value="{{ old('name') }}" 
-                                           required>
-                                    @error('name')
-                                        <span class="invalid-feedback">{{ $message }}</span>
-                                    @enderror
-                                </div>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                            <div>
+                                <label for="name" class="block text-sm font-medium text-[#735C49] mb-1">Rol Naam <span class="text-red-500">*</span></label>
+                                <input type="text" 
+                                       class="px-4 py-2 border border-[#735C49]/30 rounded-md focus:outline-none focus:ring-2 focus:ring-[#735C49] w-full @error('name') border-red-500 @enderror" 
+                                       id="name" 
+                                       name="name" 
+                                       value="{{ old('name') }}" 
+                                       placeholder="Voer rolnaam in"
+                                       required>
+                                @error('name')
+                                    <p class="mt-1 text-sm text-red-500">{{ $message }}</p>
+                                @enderror
                             </div>
-
-                            <div class="col-md-6">
-                                <div class="form-group">
-                                    <label for="description">Beschrijving</label>
-                                    <input type="text" 
-                                           class="form-control @error('description') is-invalid @enderror" 
-                                           id="description" 
-                                           name="description" 
-                                           value="{{ old('description') }}">
-                                    @error('description')
-                                        <span class="invalid-feedback">{{ $message }}</span>
-                                    @enderror
-                                </div>
+                            <div>
+                                <label for="description" class="block text-sm font-medium text-[#735C49] mb-1">Beschrijving</label>
+                                <input type="text" 
+                                       class="px-4 py-2 border border-[#735C49]/30 rounded-md focus:outline-none focus:ring-2 focus:ring-[#735C49] w-full @error('description') border-red-500 @enderror" 
+                                       id="description" 
+                                       name="description" 
+                                       value="{{ old('description') }}"
+                                       placeholder="Voer beschrijving in">
+                                @error('description')
+                                    <p class="mt-1 text-sm text-red-500">{{ $message }}</p>
+                                @enderror
                             </div>
                         </div>
 
-                        <hr class="my-4">
-
-                        <h5 class="mb-3">
-                            <i class="fas fa-key"></i> Rechten Toewijzen
-                            <small class="text-muted">(WordPress-stijl)</small>
-                        </h5>
-
-                        <div class="permissions-grid">
-                            @foreach($permissions as $category => $categoryPermissions)
-                            <div class="permission-category card mb-3">
-                                <div class="card-header">
-                                    <h6 class="mb-0">
-                                        <i class="fas fa-{{ 
-                                            $category == 'gedetineerden' ? 'user-lock' : 
-                                            ($category == 'cellen' ? 'door-closed' : 
-                                            ($category == 'rapportage' ? 'chart-bar' : 
-                                            ($category == 'gebruikers' ? 'users' : 
-                                            ($category == 'rollen' ? 'shield-alt' : 
-                                            ($category == 'systeem' ? 'cog' : 
-                                            ($category == 'dashboard' ? 'tachometer-alt' : 'key')))))) 
-                                        }}"></i>
-                                        {{ ucfirst($category) }}
-                                        <div class="float-right">
-                                            <label class="switch">
-                                                <input type="checkbox" class="category-toggle" data-category="{{ $category }}">
-                                                <span class="slider"></span>
-                                            </label>
-                                            <small class="text-muted ml-2">Alles selecteren</small>
-                                        </div>
-                                    </h6>
-                                </div>
-                                <div class="card-body">
-                                    <div class="row">
-                                        @foreach($categoryPermissions as $permission)
-                                        <div class="col-md-6 col-lg-4 mb-2">
-                                            <div class="form-check">
-                                                <input class="form-check-input permission-checkbox" 
-                                                       type="checkbox" 
-                                                       name="permissions[]" 
-                                                       value="{{ $permission->id }}" 
-                                                       id="permission_{{ $permission->id }}"
-                                                       data-category="{{ $category }}"
-                                                       {{ in_array($permission->id, old('permissions', [])) ? 'checked' : '' }}>
-                                                <label class="form-check-label" for="permission_{{ $permission->id }}">
-                                                    {{ $permission->description }}
-                                                    <small class="text-muted d-block">{{ $permission->name }}</small>
-                                                </label>
-                                            </div>
-                                        </div>
-                                        @endforeach
-                                    </div>
-                                </div>
-                            </div>
-                            @endforeach
-                        </div>
-
-                        <hr class="my-4">
-
-                        <div class="form-group">
-                            <button type="submit" class="btn btn-primary">
-                                <i class="fas fa-save"></i> Rol Aanmaken
+                        <div class="mt-6 flex space-x-4">
+                            <button type="submit" 
+                                    class="inline-flex items-center px-6 py-2 bg-[#735C49] text-white rounded-md hover:bg-[#6a4e39] transition-colors duration-300 text-sm font-medium">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" />
+                                </svg>
+                                Rol Aanmaken
                             </button>
-                            <a href="{{ route('admin.roles.index') }}" class="btn btn-secondary">
-                                <i class="fas fa-times"></i> Annuleren
+                            <a href="{{ route('admin.roles.index') }}" 
+                               class="inline-flex items-center px-6 py-2 bg-gray-500 text-white rounded-md hover:bg-gray-400 transition-colors duration-300 text-sm font-medium">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                                Annuleren
                             </a>
                         </div>
                     </form>
@@ -122,111 +65,4 @@
             </div>
         </div>
     </div>
-</div>
-
-<style>
-.sidebar {
-    min-height: 100vh;
-    background-color: #f8f9fc;
-    border-right: 1px solid #e3e6f0;
-}
-
-.main-content {
-    padding: 20px;
-}
-
-.permission-category .card-header {
-    background-color: #f8f9fc;
-    border-bottom: 1px solid #e3e6f0;
-}
-
-.switch {
-    position: relative;
-    display: inline-block;
-    width: 60px;
-    height: 34px;
-}
-
-.switch input {
-    opacity: 0;
-    width: 0;
-    height: 0;
-}
-
-.slider {
-    position: absolute;
-    cursor: pointer;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background-color: #ccc;
-    transition: .4s;
-    border-radius: 34px;
-}
-
-.slider:before {
-    position: absolute;
-    content: "";
-    height: 26px;
-    width: 26px;
-    left: 4px;
-    bottom: 4px;
-    background-color: white;
-    transition: .4s;
-    border-radius: 50%;
-}
-
-input:checked + .slider {
-    background-color: #4e73df;
-}
-
-input:checked + .slider:before {
-    transform: translateX(26px);
-}
-
-.form-check-input:checked {
-    background-color: #4e73df;
-    border-color: #4e73df;
-}
-</style>
-
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-    // Toggle alle checkboxes in een categorie
-    document.querySelectorAll('.category-toggle').forEach(function(toggle) {
-        toggle.addEventListener('change', function() {
-            const category = this.dataset.category;
-            const checkboxes = document.querySelectorAll(`input[data-category="${category}"].permission-checkbox`);
-            
-            checkboxes.forEach(function(checkbox) {
-                checkbox.checked = toggle.checked;
-            });
-        });
-    });
-    
-    // Update category toggle wanneer individuele checkboxes worden gewijzigd
-    document.querySelectorAll('.permission-checkbox').forEach(function(checkbox) {
-        checkbox.addEventListener('change', function() {
-            const category = this.dataset.category;
-            const categoryCheckboxes = document.querySelectorAll(`input[data-category="${category}"].permission-checkbox`);
-            const categoryToggle = document.querySelector(`input[data-category="${category}"].category-toggle`);
-            
-            const allChecked = Array.from(categoryCheckboxes).every(cb => cb.checked);
-            const noneChecked = Array.from(categoryCheckboxes).every(cb => !cb.checked);
-            
-            if (allChecked) {
-                categoryToggle.checked = true;
-                categoryToggle.indeterminate = false;
-            } else if (noneChecked) {
-                categoryToggle.checked = false;
-                categoryToggle.indeterminate = false;
-            } else {
-                categoryToggle.checked = false;
-                categoryToggle.indeterminate = true;
-            }
-        });
-    });
-});
-</script>
-@endsection
+</x-app-layout>

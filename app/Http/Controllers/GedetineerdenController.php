@@ -171,63 +171,64 @@ class GedetineerdenController extends Controller
         return view('gedetineerden.edit', compact('gedetineerde', 'beschikbareCellen'));
     }
 
-    // Update van een gedetineerde
     public function update(Request $request, $id)
-    {
-        $gedetineerde = Gedetineerde::findOrFail($id);
-        $huidigeOudeCel = Cel::where('gedetineerde_id', $gedetineerde->id)->first();
-    
-        $validated = $request->validate([
-            'naam_gedetineerd' => 'required|string|max:255',
-            'achternaam_gedetineerd' => 'required|string|max:255',
-            'geboortedatum_gedetineerd' => 'required|date',
-            'adres_gedetineerd' => 'required|string|max:255',
-            'datum_opsluiting' => 'required|date',
-            'datum_vrijlating' => 'nullable|date|after_or_equal:datum_opsluiting',
-            'reden_gedetineerd' => 'required|string',
-            'opmerkingen' => 'nullable|string',
-            'cel_id' => 'nullable|exists:cels,id',  // Cel_id optioneel
-        ]);
-    
-        $gedetineerde->update($validated);
-    
-        if ($request->filled('cel_id') && $huidigeOudeCel && $huidigeOudeCel->id != $request->cel_id) {
-            // Registreer geschiedenis van de oude cel
-            if ($huidigeOudeCel) {
-                $huidigeOudeCel->celGeschiedenis()->create([
-                    'gedetineerde_id' => $gedetineerde->id,
-                    'cel_id' => $huidigeOudeCel->id,
-                    'van_datum' => now()->subDay(), // Simuleer dat dit eerder was
-                    'tot_datum' => now(),  // Nu verlaat de gedetineerde de cel
-                ]);
-                
-                $huidigeOudeCel->gedetineerde_id = null;
-                $huidigeOudeCel->save();
-            }
-    
-            // Registreer geschiedenis van de nieuwe cel
-            $nieuweCel = Cel::find($request->cel_id);
-            if ($nieuweCel) {
-                $nieuweCel->gedetineerde_id = $gedetineerde->id;
-                $nieuweCel->save();
-                
-                // Voeg de nieuwe celgeschiedenis toe
-                $nieuweCel->celGeschiedenis()->create([
-                    'gedetineerde_id' => $gedetineerde->id,
-                    'cel_id' => $nieuweCel->id,
-                    'van_datum' => now(), // Nu gaat de gedetineerde naar de nieuwe cel
-                    'tot_datum' => null,  // Nog niet vertrokken
-                ]);
-                
-                $gedetineerde->locatie_vleugel_cel = $nieuweCel->id;
-                $gedetineerde->save();
-            } else {
-                return redirect()->back()->with('error', 'De geselecteerde cel is niet beschikbaar.');
-            }
-        }
-    
-        return redirect()->route('gedetineerden.index')->with('success', 'Gegevens succesvol bijgewerkt!');
+{
+    $gedetineerde = Gedetineerde::findOrFail($id);
+    $huidigeOudeCel = Cel::where('gedetineerde_id', $gedetineerde->id)->first();
+
+    // ✅ Validatie
+    $validated = $request->validate([
+        'naam_gedetineerd' => 'required|string|max:255',
+        'achternaam_gedetineerd' => 'required|string|max:255',
+        'geboortedatum_gedetineerd' => 'required|date',
+        'adres_gedetineerd' => 'required|string|max:255',
+        'datum_opsluiting' => 'required|date',
+        'datum_vrijlating' => 'nullable|date|after_or_equal:datum_opsluiting',
+        'reden_gedetineerd' => 'required|string',
+        'opmerkingen' => 'nullable|string',
+        'cel_id' => 'nullable|exists:cels,id',
+        'verslag' => 'nullable|file|mimes:pdf,doc,docx,txt|max:2048',
+    ]);
+
+    // ✅ Verslag-bestand verwerken
+    if ($request->hasFile('verslag')) {
+        $path = $request->file('verslag')->store('verslagen', 'public');
+        $validated['verslag_path'] = $path; // ⬅ in de database kolom opslaan
     }
+
+    // ✅ Update gedetineerde
+    $gedetineerde->update($validated);
+
+    // ✅ Cel-wijziging afhandelen
+    if ($request->filled('cel_id') && $huidigeOudeCel && $huidigeOudeCel->id != $request->cel_id) {
+        // Oude celgeschiedenis registreren
+        $huidigeOudeCel->celGeschiedenis()->create([
+            'gedetineerde_id' => $gedetineerde->id,
+            'cel_id' => $huidigeOudeCel->id,
+            'van_datum' => now()->subDay(),
+            'tot_datum' => now(),
+        ]);
+        $huidigeOudeCel->update(['gedetineerde_id' => null]);
+
+        // Nieuwe cel opslaan + geschiedenis
+        $nieuweCel = Cel::find($request->cel_id);
+        if ($nieuweCel) {
+            $nieuweCel->update(['gedetineerde_id' => $gedetineerde->id]);
+            $nieuweCel->celGeschiedenis()->create([
+                'gedetineerde_id' => $gedetineerde->id,
+                'cel_id' => $nieuweCel->id,
+                'van_datum' => now(),
+                'tot_datum' => null,
+            ]);
+
+            $gedetineerde->update(['locatie_vleugel_cel' => $nieuweCel->id]);
+        } else {
+            return redirect()->back()->with('error', 'De geselecteerde cel is niet beschikbaar.');
+        }
+    }
+
+    return redirect()->route('gedetineerden.index')->with('success', 'Gegevens succesvol bijgewerkt!');
+}
 
     /**
      * Remove the specified resource from storage.

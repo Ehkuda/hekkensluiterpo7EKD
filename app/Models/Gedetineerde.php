@@ -30,6 +30,7 @@ class Gedetineerde extends Model
         'reden_gedetineerd',
         'opmerkingen',
         'foto',
+        'verslag_path',
     ];
 
     // Relatie: een Gedetineerde behoort tot één Cel
@@ -44,6 +45,12 @@ class Gedetineerde extends Model
 public function celGeschiedenis()
 {
     return $this->hasMany(CelGeschiedenis::class, 'gedetineerde_id');
+}
+
+// app/Models/Gedetineerde.php
+public function visits()
+{
+    return $this->hasMany(Visit::class, 'detainee_id');
 }
 
 }

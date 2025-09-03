@@ -5,39 +5,56 @@ namespace App\Http\Controllers;
 use App\Models\User;
 use App\Models\Gedetineerde;
 use Illuminate\Http\Request;
-use Spatie\Permission\Models\Role;
-use Spatie\Permission\Models\Permission;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rule;
+use Spatie\Permission\Models\Role as SpatieRole;
+use Spatie\Permission\Models\Permission;
 
 class AdminController extends Controller
 {
-    // Dashboard
+    /**
+     * Admin dashboard
+     */
     public function dashboard()
     {
         $totalUsers = User::count();
-        $totalRoles = Role::count();
+        $totalRoles = SpatieRole::count();
         $totalPermissions = Permission::count();
         $totalGedetineerden = Gedetineerde::count();
-        
-        $recentUsers = User::with('roles')->latest()->take(5)->get();
-        
+
+        // Laatste 5 gebruikers
+        $recentUsers = User::latest()->take(5)->get();
+
         return view('admin.dashboard', compact(
-            'totalUsers', 'totalRoles', 'totalPermissions', 'totalGedetineerden', 'recentUsers'
+            'totalUsers',
+            'totalRoles',
+            'totalPermissions',
+            'totalGedetineerden',
+            'recentUsers'
         ));
     }
 
-    // ===== GEBRUIKERS =====
-
-    public function users()
+    /**
+     * Gebruikersbeheer
+     */
+    public function users(Request $request)
     {
-        $users = User::with('roles')->paginate(15);
+        $query = User::with('roles');
+
+        if ($request->has('zoekterm')) {
+            $term = $request->zoekterm;
+            $query->where('name', 'like', "%{$term}%")
+                  ->orWhere('email', 'like', "%{$term}%");
+        }
+
+        $users = $query->orderBy('name')->paginate(10);
+
         return view('admin.users.index', compact('users'));
     }
 
     public function createUser()
     {
-        $roles = Role::all();
+        $roles = SpatieRole::all();
         return view('admin.users.create', compact('roles'));
     }
 
@@ -49,19 +66,16 @@ class AdminController extends Controller
             'password' => 'required|string|min:8|confirmed',
             'roles' => 'array',
             'roles.*' => 'exists:roles,id',
-            'email_verified' => 'nullable|boolean',
         ]);
 
         $user = User::create([
             'name' => $validated['name'],
             'email' => $validated['email'],
             'password' => Hash::make($validated['password']),
-            'email_verified_at' => $request->has('email_verified') ? now() : null,
         ]);
 
         if (!empty($validated['roles'])) {
-            $roleNames = Role::whereIn('id', $validated['roles'])->pluck('name');
-            $user->assignRole($roleNames);
+            $user->assignRole($validated['roles']);
         }
 
         return redirect()->route('admin.users.index')
@@ -70,7 +84,7 @@ class AdminController extends Controller
 
     public function editUser(User $user)
     {
-        $roles = Role::all();
+        $roles = SpatieRole::all();
         $userRoles = $user->roles->pluck('id')->toArray();
         return view('admin.users.edit', compact('user', 'roles', 'userRoles'));
     }
@@ -83,7 +97,6 @@ class AdminController extends Controller
             'password' => 'nullable|string|min:8|confirmed',
             'roles' => 'array',
             'roles.*' => 'exists:roles,id',
-            'email_verified' => 'nullable|boolean',
         ]);
 
         $updateData = [
@@ -95,16 +108,8 @@ class AdminController extends Controller
             $updateData['password'] = Hash::make($validated['password']);
         }
 
-        $updateData['email_verified_at'] = $request->has('email_verified') ? now() : null;
-
         $user->update($updateData);
-
-        // Rollen updaten
-        $user->syncRoles([]);
-        if (!empty($validated['roles'])) {
-            $roleNames = Role::whereIn('id', $validated['roles'])->pluck('name');
-            $user->assignRole($roleNames);
-        }
+        $user->syncRoles($validated['roles'] ?? []);
 
         return redirect()->route('admin.users.index')
             ->with('success', 'Gebruiker succesvol bijgewerkt!');
@@ -112,107 +117,108 @@ class AdminController extends Controller
 
     public function deleteUser(User $user)
     {
-        if ($user->id === auth()->id()) {
-            return redirect()->route('admin.users.index')
-                ->with('error', 'Je kunt je eigen account niet verwijderen!');
-        }
-
         $user->delete();
         return redirect()->route('admin.users.index')
             ->with('success', 'Gebruiker succesvol verwijderd!');
     }
 
-    // ===== ROLLEN =====
-
-    public function roles()
+    /**
+     * Rollenbeheer
+     */
+    public function roles(Request $request)
     {
-        $roles = Role::with('permissions')->get();
+        $query = SpatieRole::with('permissions');
+
+        if ($request->has('zoekterm')) {
+            $term = $request->zoekterm;
+            $query->where('name', 'like', "%{$term}%")
+                  ->orWhere('description', 'like', "%{$term}%");
+        }
+
+        $roles = $query->orderBy('name')->paginate(10);
+
         return view('admin.roles.index', compact('roles'));
     }
 
     public function createRole()
     {
-        $permissions = Permission::all()->groupBy('category');
-        return view('admin.roles.create', compact('permissions'));
+        return view('admin.roles.create');
     }
 
     public function storeRole(Request $request)
     {
         $validated = $request->validate([
-            'name' => 'required|string|max:255|unique:roles',
-            'description' => 'nullable|string|max:500',
-            'permissions' => 'array',
-            'permissions.*' => 'exists:permissions,id'
+            'name' => 'required|string|max:255|unique:roles,name',
+            'description' => 'nullable|string|max:255',
         ]);
 
-        $role = Role::create([
+        SpatieRole::create([
             'name' => $validated['name'],
             'description' => $validated['description'] ?? null,
-            'guard_name' => 'web'
+            'guard_name' => 'web',
         ]);
-
-        if (!empty($validated['permissions'])) {
-            $permissionNames = Permission::whereIn('id', $validated['permissions'])->pluck('name');
-            $role->givePermissionTo($permissionNames);
-        }
 
         return redirect()->route('admin.roles.index')
             ->with('success', 'Rol succesvol aangemaakt!');
     }
 
-    public function editRole(Role $role)
+    public function editRole($id)
     {
-        $permissions = Permission::all()->groupBy('category');
-        $rolePermissions = $role->permissions->pluck('id')->toArray();
-        return view('admin.roles.edit', compact('role', 'permissions', 'rolePermissions'));
+        $role = SpatieRole::findById($id);
+        return view('admin.roles.edit', compact('role'));
     }
 
-    public function updateRole(Request $request, Role $role)
+    public function updateRole(Request $request, $id)
     {
+        $role = SpatieRole::findById($id);
+
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255', Rule::unique('roles')->ignore($role->id)],
-            'description' => 'nullable|string|max:500',
-            'permissions' => 'array',
-            'permissions.*' => 'exists:permissions,id'
+            'description' => 'nullable|string|max:255',
         ]);
 
-        $role->update([
-            'name' => $validated['name'],
-            'description' => $validated['description'] ?? null,
-        ]);
-
-        $role->syncPermissions([]);
-        if (!empty($validated['permissions'])) {
-            $permissionNames = Permission::whereIn('id', $validated['permissions'])->pluck('name');
-            $role->givePermissionTo($permissionNames);
-        }
+        $role->update($validated);
 
         return redirect()->route('admin.roles.index')
             ->with('success', 'Rol succesvol bijgewerkt!');
     }
 
-    public function deleteRole(Role $role)
+    public function deleteRole($id)
     {
+        $role = SpatieRole::findById($id);
+
         if (in_array($role->name, ['directeur', 'coordinator', 'bewaker'])) {
             return redirect()->route('admin.roles.index')
                 ->with('error', 'Basisrollen kunnen niet verwijderd worden!');
         }
 
         $role->delete();
+
         return redirect()->route('admin.roles.index')
             ->with('success', 'Rol succesvol verwijderd!');
     }
 
-    // ===== GEDETINEERDEN =====
-
-    public function gedetineerdenOverzicht()
+    /**
+     * Overzicht gedetineerden
+     */
+    public function gedetineerdenOverzicht(Request $request)
     {
-        $gedetineerden = Gedetineerde::with('cel')->paginate(20);
-        return view('admin.gedetineerden.overzicht', compact('gedetineerden'));
+        $query = Gedetineerde::with('cel');
+
+        if ($request->has('zoekterm')) {
+            $term = $request->zoekterm;
+            $query->where('naam', 'like', "%{$term}%")
+                  ->orWhere('idnummer', 'like', "%{$term}%");
+        }
+
+        $gedetineerden = $query->orderBy('naam')->paginate(10);
+
+        return view('admin.gedetineerden.index', compact('gedetineerden'));
     }
 
-    // ===== INSTELLINGEN =====
-
+    /**
+     * Instellingen
+     */
     public function settings()
     {
         return view('admin.settings.index');
@@ -220,7 +226,7 @@ class AdminController extends Controller
 
     public function updateSettings(Request $request)
     {
-        // Instellingen opslaan
+        // Voeg hier je instellingen update logica toe
         return redirect()->route('admin.settings.index')
             ->with('success', 'Instellingen succesvol bijgewerkt!');
     }
