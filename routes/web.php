@@ -9,7 +9,7 @@ use Illuminate\Support\Facades\Route;
 // Welkomstpagina
 Route::get('/', function () {
     return view('welcome');
-});
+})->name('welcome');
 
 // Auth routes
 require __DIR__ . '/auth.php';
@@ -18,61 +18,72 @@ require __DIR__ . '/auth.php';
 Route::middleware(['auth', 'verified'])->group(function () {
 
     // Dashboard
-    Route::get('/dashboard', [GedetineerdenController::class, 'dashboard'])->name('dashboard');
+    Route::get('/dashboard', [GedetineerdenController::class, 'dashboard'])
+        ->name('dashboard');
 
     // Bezoekersbeheer
-    Route::get('/visitors', [VisitorController::class, 'index'])->name('visitors.index');
-    Route::get('/visitors/create', [VisitorController::class, 'create'])->name('visitors.create');
-    Route::post('/visitors', [VisitorController::class, 'store'])->name('visitors.store');
-    Route::get('/visitors/{visitor}', [VisitorController::class, 'show'])->name('visitors.show');
-    Route::put('/visits/{visit}/departure', [VisitorController::class, 'updateDeparture'])->name('visits.departure.update');
-
-    // Gedetineerdenbeheer - alleen coordinator of directeur
-    Route::middleware(['role:coordinator|directeur'])->group(function () {
-        Route::get('/gedetineerden/create', [GedetineerdenController::class, 'create'])->name('gedetineerden.create');
-        Route::post('/gedetineerden', [GedetineerdenController::class, 'store'])->name('gedetineerden.store');
-        Route::get('/gedetineerden/{gedetineerde}/edit', [GedetineerdenController::class, 'edit'])->name('gedetineerden.edit');
-        Route::put('/gedetineerden/{gedetineerde}', [GedetineerdenController::class, 'update'])->name('gedetineerden.update');
-        Route::delete('/gedetineerden/{gedetineerde}', [GedetineerdenController::class, 'destroy'])->name('gedetineerden.destroy');
-
-        Route::get('/cellen/{cel}/verplaats', [GedetineerdenController::class, 'showVerplaatsForm'])->name('cellen.verplaats');
-        Route::post('/cellen/{cel}/verplaats', [GedetineerdenController::class, 'verplaatsGedetineerde'])->name('cellen.gedetineerden.verplaats.store');
+    Route::prefix('visitors')->name('visitors.')->group(function () {
+        Route::get('/', [VisitorController::class, 'index'])->name('index')->middleware('can:visitors.view');
+        Route::get('/create', [VisitorController::class, 'create'])->name('create')->middleware('can:visitors.create');
+        Route::post('/', [VisitorController::class, 'store'])->name('store')->middleware('can:visitors.create');
+        Route::get('/{visitor}', [VisitorController::class, 'show'])->name('show')->middleware('can:visitors.view');
+        Route::put('/{visit}/departure', [VisitorController::class, 'updateDeparture'])->name('departure.update')->middleware('can:visits.update');
     });
 
-    // Gedetineerden overzicht en details (alle ingelogde gebruikers)
-    Route::get('/gedetineerden', [GedetineerdenController::class, 'index'])->name('gedetineerden.index');
-    Route::get('/gedetineerden/{gedetineerde}', [GedetineerdenController::class, 'show'])->name('gedetineerden.show');
-    Route::get('/cellen', [GedetineerdenController::class, 'cellenIndex'])->name('cellen.index');
+    // Gedetineerdenbeheer
+    Route::prefix('gedetineerden')->name('gedetineerden.')->group(function () {
+        Route::get('/', [GedetineerdenController::class, 'index'])->name('index')->middleware('can:gedetineerden.view');
+        Route::get('/create', [GedetineerdenController::class, 'create'])->name('create')->middleware('can:gedetineerden.create');
+        Route::post('/', [GedetineerdenController::class, 'store'])->name('store')->middleware('can:gedetineerden.create');
+        Route::get('/{gedetineerde}', [GedetineerdenController::class, 'show'])->name('show')->middleware('can:gedetineerden.view');
+        Route::get('/{gedetineerde}/edit', [GedetineerdenController::class, 'edit'])->name('edit')->middleware('can:gedetineerden.edit');
+        Route::put('/{gedetineerde}', [GedetineerdenController::class, 'update'])->name('update')->middleware('can:gedetineerden.edit');
+        Route::delete('/{gedetineerde}', [GedetineerdenController::class, 'destroy'])->name('destroy')->middleware('can:gedetineerden.delete');
+        Route::get('/{gedetineerde}/geschiedenis', [GedetineerdenController::class, 'geschiedenis'])->name('geschiedenis')->middleware('can:gedetineerden.history');
+    });
 
-    // Alleen directeur
-    Route::middleware(['role:directeur'])->group(function () {
-        Route::get('/gedetineerden/{gedetineerde}/geschiedenis', [GedetineerdenController::class, 'geschiedenis'])->name('gedetineerden.geschiedenis');
-        Route::get('/cellen/{cel}/geschiedenis', [GedetineerdenController::class, 'celGeschiedenis'])->name('cellen.geschiedenis');
+    // Cellenbeheer
+    Route::prefix('cellen')->name('cellen.')->group(function () {
+        Route::get('/', [GedetineerdenController::class, 'cellenIndex'])->name('index')->middleware('can:cellen.view');
+        Route::get('/{cel}/geschiedenis', [GedetineerdenController::class, 'celGeschiedenis'])->name('geschiedenis')->middleware('can:cellen.history');
+        Route::get('/{cel}/verplaats', [GedetineerdenController::class, 'showVerplaatsForm'])->name('verplaats')->middleware('can:cellen.move');
+        Route::post('/{cel}/verplaats', [GedetineerdenController::class, 'verplaatsGedetineerde'])->name('gedetineerden.verplaats.store')->middleware('can:cellen.move');
+    });
 
-        // Admin module
-        Route::prefix('admin')->name('admin.')->group(function () {
-            Route::get('/dashboard', [AdminController::class, 'dashboard'])->name('dashboard');
-            Route::get('/users', [AdminController::class, 'users'])->name('users.index');
-            Route::get('/users/create', [AdminController::class, 'createUser'])->name('users.create');
-            Route::post('/users', [AdminController::class, 'storeUser'])->name('users.store');
-            Route::get('/users/{user}/edit', [AdminController::class, 'editUser'])->name('users.edit');
-            Route::put('/users/{user}', [AdminController::class, 'updateUser'])->name('users.update');
-            Route::delete('/users/{user}', [AdminController::class, 'deleteUser'])->name('users.destroy');
+    // Admin module
+    Route::prefix('admin')->name('admin.')->middleware('can:admin.dashboard')->group(function () {
 
-            Route::get('/roles', [AdminController::class, 'roles'])->name('roles.index');
-            Route::get('/roles/create', [AdminController::class, 'createRole'])->name('roles.create');
-            Route::post('/roles', [AdminController::class, 'storeRole'])->name('roles.store');
-            Route::get('/roles/{role}/edit', [AdminController::class, 'editRole'])->name('roles.edit');
-            Route::put('/roles/{role}', [AdminController::class, 'updateRole'])->name('roles.update');
-            Route::delete('/roles/{role}', [AdminController::class, 'deleteRole'])->name('roles.destroy');
+        Route::get('/dashboard', [AdminController::class, 'dashboard'])->name('dashboard');
 
-            Route::get('/gedetineerden', [AdminController::class, 'gedetineerdenOverzicht'])->name('gedetineerden.index');
-            Route::get('/settings', [AdminController::class, 'settings'])->name('settings.index');
-            Route::put('/settings', [AdminController::class, 'updateSettings'])->name('settings.update');
+        // Users
+        Route::prefix('users')->name('users.')->group(function () {
+            Route::get('/', [AdminController::class, 'users'])->name('index')->middleware('can:users.view');
+            Route::get('/create', [AdminController::class, 'createUser'])->name('create')->middleware('can:users.create');
+            Route::post('/', [AdminController::class, 'storeUser'])->name('store')->middleware('can:users.create');
+            Route::get('/{user}/edit', [AdminController::class, 'editUser'])->name('edit')->middleware('can:users.edit');
+            Route::put('/{user}', [AdminController::class, 'updateUser'])->name('update')->middleware('can:users.edit');
+            Route::delete('/{user}', [AdminController::class, 'deleteUser'])->name('destroy')->middleware('can:users.delete');
         });
+
+        // Roles
+        Route::prefix('roles')->name('roles.')->group(function () {
+            Route::get('/', [AdminController::class, 'roles'])->name('index')->middleware('can:roles.view');
+            Route::get('/create', [AdminController::class, 'createRole'])->name('create')->middleware('can:roles.create');
+            Route::post('/', [AdminController::class, 'storeRole'])->name('store')->middleware('can:roles.create');
+            Route::get('/{role}/edit', [AdminController::class, 'editRole'])->name('edit')->middleware('can:roles.edit');
+            Route::put('/{role}', [AdminController::class, 'updateRole'])->name('update')->middleware('can:roles.edit');
+            Route::delete('/{role}', [AdminController::class, 'deleteRole'])->name('destroy')->middleware('can:roles.delete');
+        });
+
+        // Gedetineerden overzicht (admin)
+        Route::get('/gedetineerden', [AdminController::class, 'gedetineerdenOverzicht'])->name('gedetineerden.index')->middleware('can:gedetineerden.view');
+
+        // Settings
+        Route::get('/settings', [AdminController::class, 'settings'])->name('settings.index')->middleware('can:admin.settings');
+        Route::put('/settings', [AdminController::class, 'updateSettings'])->name('settings.update')->middleware('can:admin.settings');
     });
 
-    // Profielbeheer (alle ingelogde gebruikers)
+    // Profielbeheer
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');

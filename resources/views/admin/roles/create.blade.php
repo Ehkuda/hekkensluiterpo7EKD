@@ -44,6 +44,36 @@
                             </div>
                         </div>
 
+                        <!-- Permissions Section -->
+                        @if($permissions->count() > 0)
+                        <div class="mt-8">
+                            <h3 class="text-lg font-medium text-[#735C49] mb-4">Rechten toewijzen</h3>
+                            <div class="bg-[#F7EADF]/40 p-4 rounded-lg border border-[#735C49]/20">
+                                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                    @foreach($permissions as $permission)
+                                        <div class="flex items-center">
+                                            <input type="checkbox" 
+                                                   id="permission_{{ $permission->id }}" 
+                                                   name="permissions[]" 
+                                                   value="{{ $permission->id }}"
+                                                   class="h-4 w-4 text-[#735C49] focus:ring-[#735C49] border-[#735C49]/30 rounded"
+                                                   {{ in_array($permission->id, old('permissions', [])) ? 'checked' : '' }}>
+                                            <label for="permission_{{ $permission->id }}" class="ml-2 text-sm text-[#735C49]">
+                                                {{ $permission->name }}
+                                                @if($permission->description)
+                                                    <span class="text-gray-500 text-xs block">{{ $permission->description }}</span>
+                                                @endif
+                                            </label>
+                                        </div>
+                                    @endforeach
+                                </div>
+                                @error('permissions')
+                                    <p class="mt-2 text-sm text-red-500">{{ $message }}</p>
+                                @enderror
+                            </div>
+                        </div>
+                        @endif
+
                         <div class="mt-6 flex space-x-4">
                             <button type="submit" 
                                     class="inline-flex items-center px-6 py-2 bg-[#735C49] text-white rounded-md hover:bg-[#6a4e39] transition-colors duration-300 text-sm font-medium">
