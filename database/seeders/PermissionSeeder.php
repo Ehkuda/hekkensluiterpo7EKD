@@ -34,6 +34,10 @@ class PermissionSeeder extends Seeder
             ['name' => 'visitors.delete', 'description' => 'Bezoekers verwijderen'],
             ['name' => 'visits.update', 'description' => 'Bezoek info bijwerken'],
             
+            // Bezoekverzoeken beheer (NIEUW)
+            ['name' => 'visit-requests.view', 'description' => 'Bezoekverzoeken bekijken'],
+            ['name' => 'visit-requests.approve', 'description' => 'Bezoekverzoeken goedkeuren/afwijzen'],
+            
             // Gebruikersbeheer (admin)
             ['name' => 'users.view', 'description' => 'Gebruikers bekijken'],
             ['name' => 'users.create', 'description' => 'Gebruikers aanmaken'],
@@ -89,6 +93,8 @@ class PermissionSeeder extends Seeder
                 'visitors.create',
                 'visitors.edit',
                 'visits.update',
+                'visit-requests.view',        // NIEUW
+                'visit-requests.approve',     // NIEUW
                 'reports.view',
             ];
             $coordinator->givePermissionTo($coordinatorPermissions);
@@ -103,6 +109,8 @@ class PermissionSeeder extends Seeder
                 'visitors.view',
                 'visitors.create',
                 'visits.update',
+                'visit-requests.view',        // NIEUW
+                'visit-requests.approve',     // NIEUW
             ];
             $bewaker->givePermissionTo($bewakerPermissions);
         }

@@ -171,8 +171,8 @@
                 </div>
             </div>
             
-            <!-- Quick links -->
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <!-- Quick links + Cellen Status -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
                 <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
                     <div class="p-6">
                         <h2 class="text-xl font-semibold text-[#735C49] mb-4">Snelle Acties</h2>
@@ -233,6 +233,88 @@
                     </div>
                 </div>
             </div>
+
+            <!-- Bezoekverzoeken -->
+            @can('visit-requests.view')
+                <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg mb-6">
+                    <div class="p-6 bg-white border-b border-gray-200">
+                        <div class="flex items-center justify-between mb-4">
+                            <h3 class="text-lg font-semibold text-gray-900">Bezoekverzoeken</h3>
+                            <a href="{{ route('visit-requests.index') }}" 
+                               class="text-blue-600 hover:text-blue-900 text-sm font-medium">
+                                Alle verzoeken →
+                            </a>
+                        </div>
+                        
+                        @php
+                            $pendingRequests = \App\Models\VisitRequest::with(['detainee'])
+                                ->pending()
+                                ->orderBy('created_at', 'desc')
+                                ->limit(5)
+                                ->get();
+                            $totalPending = \App\Models\VisitRequest::pending()->count();
+                            $totalApproved = \App\Models\VisitRequest::approved()->count();
+                            $totalRejected = \App\Models\VisitRequest::rejected()->count();
+                        @endphp
+                        
+                        <!-- Statistics -->
+                        <div class="grid grid-cols-3 gap-4 mb-6">
+                            <div class="text-center">
+                                <div class="text-2xl font-bold text-yellow-600">{{ $totalPending }}</div>
+                                <div class="text-sm text-gray-600">In afwachting</div>
+                            </div>
+                            <div class="text-center">
+                                <div class="text-2xl font-bold text-green-600">{{ $totalApproved }}</div>
+                                <div class="text-sm text-gray-600">Goedgekeurd</div>
+                            </div>
+                            <div class="text-center">
+                                <div class="text-2xl font-bold text-red-600">{{ $totalRejected }}</div>
+                                <div class="text-sm text-gray-600">Afgewezen</div>
+                            </div>
+                        </div>
+                        
+                        <!-- Recent pending requests -->
+                        @if($pendingRequests->count() > 0)
+                            <div>
+                                <h4 class="font-medium text-gray-900 mb-3">Recente verzoeken in behandeling:</h4>
+                                <div class="space-y-3">
+                                    @foreach($pendingRequests as $request)
+                                        <div class="flex items-center justify-between p-3 bg-yellow-50 border border-yellow-200 rounded-md">
+                                            <div class="flex-1">
+                                                <div class="text-sm font-medium text-gray-900">
+                                                    {{ $request->visitor_name }}
+                                                </div>
+                                                <div class="text-xs text-gray-600">
+                                                    Voor: {{ $request->detainee->naam_gedetineerd }} {{ $request->detainee->achternaam_gedetineerd }}
+                                                </div>
+                                                <div class="text-xs text-gray-600">
+                                                    Gewenst: {{ $request->requested_visit_time->format('d-m-Y H:i') }}
+                                                </div>
+                                            </div>
+                                            <div class="flex space-x-2">
+                                                <a href="{{ route('visit-requests.show', $request) }}" 
+                                                   class="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded hover:bg-blue-200">
+                                                    Details
+                                                </a>
+                                                @can('visit-requests.approve')
+                                                    <a href="{{ route('visit-requests.approval', $request) }}" 
+                                                       class="text-xs bg-green-100 text-green-800 px-2 py-1 rounded hover:bg-green-200">
+                                                        Behandelen
+                                                    </a>
+                                                @endcan
+                                            </div>
+                                        </div>
+                                    @endforeach
+                                </div>
+                            </div>
+                        @else
+                            <div class="text-center text-gray-500 text-sm py-4">
+                                Geen openstaande bezoekverzoeken
+                            </div>
+                        @endif
+                    </div>
+                </div>
+            @endcan
         </div>
     </div>
 </x-app-layout>

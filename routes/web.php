@@ -4,12 +4,17 @@ use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\AdminController;
 use App\Http\Controllers\GedetineerdenController;
 use App\Http\Controllers\VisitorController;
+use App\Http\Controllers\VisitRequestController;
 use Illuminate\Support\Facades\Route;
 
 // Welkomstpagina
 Route::get('/', function () {
     return view('welcome');
 })->name('welcome');
+
+// Publieke route voor bezoekverzoeken (GEEN authenticatie vereist)
+Route::get('/bezoekverzoek', [VisitRequestController::class, 'create'])->name('visit-requests.create');
+Route::post('/bezoekverzoek', [VisitRequestController::class, 'store'])->name('visit-requests.store');
 
 // Auth routes
 require __DIR__ . '/auth.php';
@@ -20,6 +25,19 @@ Route::middleware(['auth', 'verified'])->group(function () {
     // Dashboard
     Route::get('/dashboard', [GedetineerdenController::class, 'dashboard'])
         ->name('dashboard');
+
+    // Bezoekverzoeken beheer (alleen voor staff)
+    Route::prefix('visit-requests')->name('visit-requests.')->group(function () {
+        Route::get('/', [VisitRequestController::class, 'index'])->name('index')->middleware('can:visit-requests.view');
+        
+        // SPECIFIEKE routes eerst!
+        Route::get('/{visitRequest}/approval', [VisitRequestController::class, 'showApprovalForm'])->name('approval')->middleware('can:visit-requests.approve');
+        Route::put('/{visitRequest}/approve', [VisitRequestController::class, 'approve'])->name('approve')->middleware('can:visit-requests.approve');
+        Route::put('/{visitRequest}/reject', [VisitRequestController::class, 'reject'])->name('reject')->middleware('can:visit-requests.approve');
+        
+        // ALGEMENE route als laatste!
+        Route::get('/{visitRequest}', [VisitRequestController::class, 'show'])->name('show')->middleware('can:visit-requests.view');
+    });
 
     // Bezoekersbeheer
     Route::prefix('visitors')->name('visitors.')->group(function () {

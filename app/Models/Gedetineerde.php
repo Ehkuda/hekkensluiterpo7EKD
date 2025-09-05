@@ -53,4 +53,9 @@ public function visits()
     return $this->hasMany(Visit::class, 'detainee_id');
 }
 
+public function visitRequests()
+{
+    return $this->hasMany(VisitRequest::class, 'detainee_id');
+}
+
 }
